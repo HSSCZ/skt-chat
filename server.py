@@ -2,11 +2,10 @@
 
 import select
 import socket
-import sys
-import threading
 
 class Server(object):
     server_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
     def __init__(self, name, port, buff):
         self.name = name
@@ -26,89 +25,48 @@ class Server(object):
         print 'Chat server started on port %d' % self.port
 
         while True:
-            read_socks, write_socks, err_socks = select.select(self.CONN_LIST, [], [])
+            r_socks, w_socks, err_socks = select.select(self.CONN_LIST, [], [])
 
-            for sock in read_socks:
+            for sock in r_socks:
                 if sock == self.server_sock:
-                    (conn, addr) = self.server_sock.accept()
+                    conn, addr = self.server_sock.accept()
                     self.CONN_LIST.append(conn)
                     print '%s:%d connected' % addr
-                    self.broadcastMsg(conn, '[%s:%d] has entered the room.\n' % addr)
-                    # t = threading.Thread(target=self.clientThread, args=(conn, addr))
-                    # t.start()
+                    conn.sendall('Welcome to %s hosted by: \n%s' % (self.name, self.HEADER))
+                    self.broadcastMsg(conn, '\n[%s:%d] has entered the room.\n' % addr)
                 else:
                     try:
                         data = sock.recv(self.buff)
                         if data:
-                            if data.startswith('/exit'):
-                                raise Exception
                             self.broadcastMsg(sock, '\r<%s> %s' % (str(sock.getpeername()), data))
-                    except:
-                        self.broadcastMsg(sock, 'Client [%s:%d] is offline.' % addr)
+                        else:
+                            raise Exception
+                    except Exception as e:
+                        print e
+                        self.broadcastMsg(sock, '[%s:%d] has disconnected.' % addr)
                         print '%s:%d disconnected' % addr
-                        sock.close()
                         self.CONN_LIST.remove(sock)
+                        sock.close()
                         continue
 
         self.server_sock.close()
 
-    def broadcastMsg(self, sock, message):
+    def broadcastMsg(self, sending_sock, message):
         for s in self.CONN_LIST:
-            if s != self.server_sock and s != sock:
+            if s != self.server_sock and s != sending_sock:
                 try:
-                    sock.sendall(message)
+                    s.sendall(message)
                 except:
-                    sock.close()
-                    self.CONN_LIST.remove(sock)
+                    s.close()
+                    self.CONN_LIST.remove(s)
+        print message
 
-    def clientThread(self, conn, addr):
-        conn.sendall('Welcome to %s, hosted by:' % self.name) 
-        conn.sendall(self.HEADER)
-
-        while True:
-            data = conn.recv(1024)
-            if not data:
-                break
-            if data.startswith('/exit'):
-                conn.sendall('goodbye\n')
-                break
-            reply = r'%s' % data
-            conn.sendall(reply)
-
-        conn.close()
-        print '%s:%d disconnected' % (addr[0], addr[1])
-        return
-
-class Client(object):
-    def __init__(self, host, port):
-        self.host = host
-        self.port = port
-
-    def start(self):
-        client_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-        try:
-            client_sock.connect((self.host, self.port))
-        except socket.error, e:
-            print 'Failed to connect: %s' % e
-
-        while True:
-            client_sock.send(raw_input('>>> '))
+    def directMsg(self, sending_sock, recv_sock, message):
+        pass
 
 def main():
-    if len(sys.argv) > 1:
-        if sys.argv[1] == '-s':
-            s1 = Server('SktChatServ', 7676, 4096)
-            s1.start()
-        elif sys.argv[1] == '-c':
-            c1 = Client('localhost', 7676)
-            c1.start()
-        else:
-            print 'Invalid argument'
-            sys.exit(0)
-    else:
-        print 'Please provide an argument'
-        sys.exit(0)
+    s1 = Server('SktChatServ', 7676, 4096)
+    s1.start()
 
 if __name__  == '__main__':
     main()
