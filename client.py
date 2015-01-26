@@ -29,9 +29,9 @@ class Client(object):
                     if not data:
                         print 'Disconnected from server.'
                         sys.exit()
-                    print '>>> %s' % data
+                    print '<%s> %s' % (self.client_sock.getsockname(), data)
                 else:
-                    data = raw_input('>>> ')
+                    data = raw_input('<%s> ' % str(self.client_sock.getsockname()))
                     self.client_sock.sendall(data)
 
 def main():
