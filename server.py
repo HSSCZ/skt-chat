@@ -36,7 +36,8 @@ class Server(object):
                 self.RUN = 0
             self.broadcastMsg(from_sock, '<%s> %s\n' % (sock_user, data.strip('\n')))
         else:
-            raise Exception
+            return False
+        return True
 
     def broadcastMsg(self, from_sock, message):
         for s in self.conn_list:
@@ -78,10 +79,7 @@ class Server(object):
                 if sock == self.srv_sock:
                     addr = self.acceptConn()
                 else:
-                    try:
-                        self.acceptData(sock)
-                    except Exception as e:
-                        print 'Error: %s' % e
+                    if not self.acceptData(sock):
                         self.conn_list.remove(sock)
                         sock.close()
 
