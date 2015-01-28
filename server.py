@@ -2,77 +2,97 @@
 
 import select
 import socket
+import sys
 
 class Server(object):
-    server_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    RUN = 1
+    srv_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    srv_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
     def __init__(self, name, port, buff):
         self.name = name
         self.port = port
         self.buff = buff
-        self.CONN_LIST = []
+        self.users = {}
+        self.conn_list = []
 
-        self.registered_users = {'127.0.0.1': 'TempAdmin'}
-        self.HEADER = ' a p o c a l y p s e \n & @ # $ ! & % # % @ \n' + ' -'*10 + '\n'
+        self.header = ' -'*7 + '\n - H S S C Z - \n' + ' -'*7 + '\n'
+        self.welcome = 'Welcome to %s hosted by:\n%s' % (self.name, self.header)
 
-    def start(self):
-        print self.registered_users
-        try:
-            self.server_sock.bind(('0.0.0.0', self.port))
-        except socket.error, e:
-            print 'Failed to bind socket: %s' % e
-            return
-        self.server_sock.listen(10)
-        self.CONN_LIST.append(self.server_sock)
-        print 'Chat server started on port %d' % self.port
+    def acceptConn(self):
+        conn, addr = self.srv_sock.accept()
+        self.conn_list.append(conn)
+        conn.sendall(self.welcome)
 
-        while True:
-            r_socks, w_socks, err_socks = select.select(self.CONN_LIST, [], [])
+        self.broadcastMsg(conn, '[%d] has entered the room.\n' % addr[1])
+        print '%s:%d connected' % addr
+        return addr
 
-            for sock in r_socks:
-                if sock == self.server_sock:
-                    # If server socket is readable then we have a client trying to connect
-                    conn, addr = self.server_sock.accept()
-                    self.CONN_LIST.append(conn)
-                    print '%s:%d connected' % addr
-                    conn.sendall('Welcome to %s hosted by: \n%s' % (self.name, self.HEADER))
-                    self.broadcastMsg(conn, '\n[%s:%d] has entered the room.\n' % addr)
-                else:
-                    # One of our client connections is readable
-                    try:
-                        data = sock.recv(self.buff)
-                        if data:
-                            self.broadcastMsg(sock, '\r<%s> %s' % (self.registered_users[sock.getpeername()[0]], data))
-                        else:
-                            raise Exception
-                    except Exception as e:
-                        print 'Client error: %s' % e
-                        self.broadcastMsg(sock, '[%s:%d] has disconnected.' % addr)
-                        print '%s:%d disconnected' % addr
-                        self.CONN_LIST.remove(sock)
-                        sock.close()
-                        continue
-        self.shutdown('Server is shutting down.')
+    def acceptData(self, from_sock):
+        sock_user = from_sock.getpeername()[1] # Using port number as user id for now
+        data = from_sock.recv(self.buff)
+        if data:
+            if data.startswith('/srvquit'):
+                self.RUN = 0
+            self.broadcastMsg(from_sock, '<%s> %s\n' % (sock_user, data.strip('\n')))
+        else:
+            raise Exception
 
-    def broadcastMsg(self, sending_sock, message):
-        for s in self.CONN_LIST:
-            if s != self.server_sock and s != sending_sock:
+    def broadcastMsg(self, from_sock, message):
+        for s in self.conn_list:
+            if s != self.srv_sock and s != from_sock:
                 try:
                     s.sendall(message)
                 except:
                     s.close()
-                    self.CONN_LIST.remove(s)
+                    self.conn_list.remove(s)
 
-    def directMsg(self, sending_sock, recv_sock, message):
-        pass
+    def directMsg(self, from_sock, to_sock, msg):
+        # to_sock errors, not connected
+        to_sock.sendall('<%s> %s' % (from_sock.getpeername()[1], msg))
 
-    def shutdown(self, server_sock, message):
-        server_sock.sendall(message)
-        server_sock.close()
+    def shutdown(self, message):
+        print 'Server is shutting down.'
+        self.broadcastMsg(self.srv_sock, 'Server is shutting down.\n')
+        for s in self.conn_list:
+            s.close()
+            self.conn_list.remove(s)
+        self.srv_sock.close()
+        sys.exit(0)
+
+    def start(self):
+        try:
+            self.srv_sock.bind(('0.0.0.0', self.port))
+        except socket.error, e:
+            print 'Failed to bind socket: %s' % e
+            return
+        self.srv_sock.listen(10)
+        self.conn_list.append(self.srv_sock)
+
+        print 'Chat server started on port %d' % self.port
+
+        while self.RUN == 1:
+            r_socks, w_socks, err_socks = select.select(self.conn_list, [], [])
+
+            for sock in r_socks:
+                if sock == self.srv_sock:
+                    addr = self.acceptConn()
+                else:
+                    try:
+                        self.acceptData(sock)
+                    except Exception as e:
+                        print 'Error: %s' % e
+                        self.conn_list.remove(sock)
+                        sock.close()
+
+                        self.broadcastMsg(sock, '[%d] has disconnected.\n' % addr[1])
+                        print '%s:%d disconnected' % addr
+                        continue
+
+        self.shutdown('Server is shutting down.')
 
 def main():
-    s1 = Server('SktChatServ', 7676, 4096)
+    s1 = Server('TheGrove', 7676, 4096)
     s1.start()
 
 if __name__  == '__main__':
