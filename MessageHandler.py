@@ -10,3 +10,4 @@ class MessageHandler(object):
         # Encode for transmission through sockets
         message = message.encode(self.encoding)
         return message
+

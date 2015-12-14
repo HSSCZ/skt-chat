@@ -3,12 +3,17 @@
 import select
 import socket
 import sys
-from time import sleep
 
 from MessageHandler import MessageHandler
 
 class Client(object):
     def __init__(self, host, port):
+        ''' Client init
+
+        Args:
+        host: server host address
+        port: server host port
+        '''
         self.RUN = 1
         self.client_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.client_sock.settimeout(10)
@@ -21,6 +26,7 @@ class Client(object):
         self.settings = {}
 
     def readConfig(self):
+        ''' Read config file in to self.settings dict'''
         with open('settings.client', 'r') as settings_file:
             lines = settings_file.readlines()
 
@@ -33,6 +39,10 @@ class Client(object):
         print(self.settings)
 
     def acceptData(self):
+        ''' Accepts data from self.client_sock and prints to stdout
+
+        Called during main loop when self.client_sock is readable
+        '''
         data = self.client_sock.recv(1024)
 
         if not data:
@@ -43,6 +53,7 @@ class Client(object):
         print('\r%s' % data, end=' ')
 
     def connect(self):
+        ''' Attempt to connect to the server at self.host:self.port'''
         try:
             self.client_sock.connect((self.host, self.port))
         except socket.error as e:
@@ -50,6 +61,12 @@ class Client(object):
             exit(1)
 
     def editConfig(self, setting, value):
+        ''' Edit a single setting in the config file
+
+        Args:
+        setting: name of setting, string
+        value: value of setting, string
+        '''
         with open('settings.client', 'r') as settings_file:
             lines = settings_file.readlines()
         for i, line in enumerate(lines):
@@ -61,8 +78,7 @@ class Client(object):
             settings_file.writelines(lines)
 
     def identify(self):
-        # Sends client nickname to server
-
+        ''' Sends client nickname to server on initial connection'''
         if not 'nickname' in self.settings.keys(): 
             # No nick was specified in the config
             self.settings['nickname'] = 'Generick'
@@ -72,10 +88,16 @@ class Client(object):
         self.client_sock.sendall(identify)
 
     def prompt(self):
+        ''' Chat input prompt'''
         sys.stdout.write('\r<You> ')
         sys.stdout.flush()
         
-    def start(self):
+    def run(self):
+        ''' Main client function 
+
+        Read settings, connect to server and identify.
+        Checks sockets for new input or new messages from the server.
+        '''
         self.readConfig()
         self.connect()
         self.identify()
@@ -112,7 +134,8 @@ class Client(object):
 
 def main(host, port):
     c1 = Client(host, port)
-    c1.start()
+    c1.run()
 
 if __name__  == '__main__':
     main('localhost', 7676)
+

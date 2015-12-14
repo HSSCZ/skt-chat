@@ -9,6 +9,13 @@ from User import User
 
 class Server(object):
     def __init__(self, name, port, buff):
+        ''' Server init
+
+        Args:
+        name: title of server, sent to user on connect
+        port: port to run server on
+        buff: buffer size
+        '''
         self.RUN = 1
         self.srv_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.srv_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -27,6 +34,14 @@ class Server(object):
         self.welcome = self.welcome.encode('utf-8')
 
     def acceptConn(self):
+        ''' Accept a new connection to the chat server.  Only allows connections
+        from skt-chat clients
+
+        Sets up a new user with nickname sent from client and socket user is on
+        Users are stored in self.conn_list and self.user_dict (redundant?)
+
+        Called when self.srv_sock is readable
+        '''
         conn, addr = self.srv_sock.accept() # Socket object, address info (ip, port)
 
         # Identify user
@@ -107,7 +122,12 @@ class Server(object):
         return True
 
     def broadcastMsg(self, from_sock, message):
-        # Encodes message and sends to all clients other than from_sock
+        ''' Encodes message and sends to all clients other than from_sock
+
+        Args:
+        from_sock: socket that message was sent from
+        message: message text
+        '''
         message = self.MsgHandle.sanitize(message)
 
         for s in self.conn_list:
@@ -119,7 +139,15 @@ class Server(object):
                     self.conn_list.remove(s)
 
     def directMsg(self, to_user, msg, from_user=None):
-        # If from_user == None then message one from the server
+        ''' Handles sending private messages from one user to another or from
+        the server to a single user
+
+        Args:
+        to_user: user in self.user_dict that is to receive message
+        msg: text message
+        from_user: user sending the message, set to None if sent from the server
+        '''
+        # If from_user == None then message coming from the server
         if from_user:
             direct_msg = '\n<%s> %s' % (from_user.nickname, msg)
         else:
@@ -127,7 +155,8 @@ class Server(object):
         direct_msg = self.MsgHandle.sanitize(direct_msg)
         to_user.sock.sendall(direct_msg)
 
-    def shutdown(self, message):
+    def shutdown(self):
+        ''' Disconnect clients and shut down server'''
         print('Server is shutting down.')
         self.broadcastMsg(self.srv_sock, 'Server is shutting down.\n')
         for s in self.conn_list:
@@ -137,6 +166,11 @@ class Server(object):
         sys.exit(0)
 
     def run(self):
+        ''' Main server function
+
+        Set up the server socket.  Start listening for connections, handle
+        users, broadcast messages
+        '''
         try:
             self.srv_sock.bind(('0.0.0.0', self.port))
         except socket.error as e:
@@ -169,7 +203,7 @@ class Server(object):
                         self.conn_list.remove(sock)
                         sock.close()
 
-        self.shutdown('Server is shutting down.')
+        self.shutdown()
 
 def main():
     s1 = Server('skt-chat', 7676, 1024)
@@ -177,3 +211,4 @@ def main():
 
 if __name__  == '__main__':
     main()
+
