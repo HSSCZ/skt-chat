@@ -19,7 +19,7 @@ There are several commands the client can use.
 
 ##### Config files:
 Configurations for client and server are stored in the files `settings.client`
-and `settings.server` respectively.  
+and `settings.server` respectively.
 
 Settings are stored in a string `setting:value` and read in to a dict.
 
@@ -35,7 +35,7 @@ The client identifies itself to the server by sending an initial message
 composed of a unique string followed by a space and the client nickname.
 
 ##### Issues:
-Any message the client is tpying is overwritten (but not lost) when
+Any message the client is typing is overwritten (but not lost) when
 the client recieves a message.
 
 Issues with the prompt overwriting messages from the server.
