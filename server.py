@@ -24,13 +24,15 @@ class Server(object):
         self.port = port
         self.buff = buff
 
+        self.settings = {}
+
         #  { 'nickname':User object }
         # key should always match User.nickname
         self.user_dict = {}
         # List of connected sockets
         self.conn_list = []
 
-        self.MsgHandle = MessageHandler()
+        self.MsgHandle = MessageHandler(maxLength=768)
 
         # Welcome message sent to users on connect
         self.header = ' -'*7 + '\n -           - \n' + ' -'*7 + '\n'
@@ -56,7 +58,6 @@ class Server(object):
 
         # Unique string to identify initial client connection
         if data.startswith('TU\'3<_f`]kq<'):
-            # Connection from skt-chat client
             self.conn_list.append(conn)
 
             # Client nick comes after unique string
@@ -79,7 +80,7 @@ class Server(object):
 
         print('\'%s\' %s:%s connected' % (nickname, addr[0], addr[1]))
 
-        user_join = '[%s] has entered the room.\n' % nickname
+        user_join = '[%s] has entered the room\n' % nickname
         self.broadcastMsg(self.srv_sock, user_join)
 
 
@@ -89,7 +90,7 @@ class Server(object):
             Checks for commands
             If no commands sends data to other clients
         '''
-        # Find which user is sending data
+        # Find the user that is sending data
         for k,u in self.user_dict.items():
             if u.sock == from_sock:
                 sock_user = self.user_dict[k]
@@ -107,11 +108,15 @@ class Server(object):
                 self.RUN = 0
             elif data.startswith('/nickname') or data.startswith('/nick'):
                 # Change users nickname
-                new_nick = data.split(' ')[1].strip('\n')
-                new_nick = self.duplicateNicknameFix(new_nick)
-                sock_user.nickname = new_nick
-                # Update self.user_dict with new nickname
-                self.user_dict[new_nick] = self.user_dict.pop(sock_user_nick)
+                new_nick = data.split(' ')[1].strip()
+                # Don't do anything if user is trying to change to the nick
+                # they already have
+                if new_nick != sock_user_nick:
+                    new_nick = self.duplicateNicknameFix(new_nick)
+                    sock_user.nickname = new_nick
+                    # Update self.user_dict with new nickname
+                    self.user_dict[new_nick] = self.user_dict.pop(sock_user_nick)
+                    self.broadcastMsg(self.srv_sock, '[%s changed nickname to %s]\n'%(sock_user_nick, new_nick))
 
             elif data.startswith('/users'):
                 # Send a list of users to sock_user
@@ -122,13 +127,13 @@ class Server(object):
                 # Disconnect sock_user
                 self.conn_list.remove(from_sock)
                 from_sock.close()
-                self.broadcastMsg(self.srv_sock, '[%s] has disconnected.\n' % sock_user.nickname)
+                self.broadcastMsg(self.srv_sock, '[%s] has disconnected\n' % sock_user.nickname)
                 print('\'%s\' %s:%s disconnected' % (sock_user.nickname, sock_addr[0], sock_addr[1]))
                 self.user_dict.pop(sock_user.nickname)
 
             else:
                 # Regular message, broadcast to everyone
-                self.broadcastMsg(from_sock, '<%s> %s\n' % (sock_user.nickname, data.strip('\n')))
+                self.broadcastMsg(from_sock, '<%s> %s\n' % (sock_user.nickname, data.strip()))
         else:
             return False
         return True
@@ -212,7 +217,6 @@ class Server(object):
         print('Chat server started on port %d' % self.port)
 
         while self.RUN == 1:
-            print(self.user_dict)
             # Get sockets
             r_socks, w_socks, err_socks = select.select(self.conn_list, [], [])
 
@@ -226,7 +230,7 @@ class Server(object):
                         addr = sock.getpeername()
                         for k,v in self.user_dict.items():
                             if v.sock == sock:
-                                self.broadcastMsg(self.srv_sock, '[%s] has disconnected.\n' % v.nickname)
+                                self.broadcastMsg(self.srv_sock, '[%s] has disconnected\n' % v.nickname)
                                 print('\'%s\' %s:%s disconnected' % (v.nickname, addr[0], addr[1]))
                                 self.user_dict.pop(k)
                                 break
