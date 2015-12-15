@@ -67,13 +67,23 @@ class Client(object):
         setting: name of setting, string
         value: value of setting, string
         '''
+        # Is set to True if setting is found in file
+        setting_match = False
+
         with open('settings.client', 'r') as settings_file:
             lines = settings_file.readlines()
+
         for i, line in enumerate(lines):
             if line.startswith(setting):
+                setting_match = True
                 new_line = '%s:%s\n'%(setting,value)
                 lines[i] = new_line
                 break
+
+        # Setting didn't exist in file, create it
+        if not setting_match:
+            lines.append('%s:%s'%(setting, value))
+
         with open('settings.client', 'w') as settings_file:
             settings_file.writelines(lines)
 
@@ -83,6 +93,7 @@ class Client(object):
             # No nick was specified in the config
             self.settings['nickname'] = 'Generick'
 
+        # Unique string to identify initial connection from skt-chat client
         identify = 'TU\'3<_f`]kq< %s' % self.settings['nickname']
         identify = identify.encode('utf-8')
         self.client_sock.sendall(identify)
@@ -128,6 +139,7 @@ class Client(object):
                         data = self.MsgHandle.sanitize(data)
                         self.client_sock.sendall(data)
                     else:
+                        # Regular message to be broadcast
                         data = self.MsgHandle.sanitize(data)
                         self.client_sock.sendall(data)
             self.prompt()

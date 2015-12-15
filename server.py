@@ -23,7 +23,11 @@ class Server(object):
         self.name = name
         self.port = port
         self.buff = buff
+
+        #  { 'nickname':User object }
+        # key should always match User.nickname
         self.user_dict = {}
+        # List of connected sockets
         self.conn_list = []
 
         self.MsgHandle = MessageHandler()
@@ -38,7 +42,7 @@ class Server(object):
         from skt-chat clients
 
         Sets up a new user with nickname sent from client and socket user is on
-        Users are stored in self.conn_list and self.user_dict (redundant?)
+        Users are stored in self.conn_list and self.user_dict
 
         Called when self.srv_sock is readable
         '''
@@ -52,24 +56,22 @@ class Server(object):
 
         # Unique string to identify initial client connection
         if data.startswith('TU\'3<_f`]kq<'):
+            # Connection from skt-chat client
             self.conn_list.append(conn)
+
             # Client nick comes after unique string
             nickname = data.split(' ')[1]
+
             # Add number to nick if user with nickname already exists
-            dup_count = 0
-            for key in self.user_dict:
-                # Nickname will have space if duplicate name ie 'user (1)'
-                # Spaces not allowed in nicknames otherwise
-                if nickname == key.split(' ')[0]:
-                    dup_count += 1
-            if dup_count:
-                nickname += ' (%d)'%dup_count
+            nickname = self.duplicateNicknameFix(nickname)
+
             # Add user to user dict
             self.user_dict[nickname] = User(nickname, conn)
+
             # Send welcome message
             conn.sendall(self.welcome)
-            print(self.user_dict)
         else:
+            # Connection attempt from something other than skt-chat client
             invalid_client = self.MsgHandle.sanitize('Connect using skt-chat client.\n')
             conn.sendall(invalid_client)
             conn.close()
@@ -87,39 +89,66 @@ class Server(object):
             Checks for commands
             If no commands sends data to other clients
         '''
-
         # Find which user is sending data
         for k,u in self.user_dict.items():
             if u.sock == from_sock:
                 sock_user = self.user_dict[k]
+                sock_user_nick = k
                 break
 
-        sock_addr = from_sock.getpeername()
+        sock_addr = sock_user.sock.getpeername()
 
         # Recieve data
-        data = from_sock.recv(self.buff).decode('utf-8')
+        data = sock_user.sock.recv(self.buff).decode('utf-8')
 
         if data:
             # Check for server commands
             if data.startswith('/srvquit'):
                 self.RUN = 0
             elif data.startswith('/nickname') or data.startswith('/nick'):
-                # Need to update user dict with new nick
-                sock_user.nickname = data.split(' ')[1].strip('\n')
+                # Change users nickname
+                new_nick = data.split(' ')[1].strip('\n')
+                new_nick = self.duplicateNicknameFix(new_nick)
+                sock_user.nickname = new_nick
+                # Update self.user_dict with new nickname
+                self.user_dict[new_nick] = self.user_dict.pop(sock_user_nick)
+
             elif data.startswith('/users'):
+                # Send a list of users to sock_user
                 user_list = '\n'.join([x for x in self.user_dict])
                 self.directMsg(sock_user, user_list)
+
             elif data.startswith('/dc'):
+                # Disconnect sock_user
                 self.conn_list.remove(from_sock)
                 from_sock.close()
                 self.broadcastMsg(self.srv_sock, '[%s] has disconnected.\n' % sock_user.nickname)
                 print('\'%s\' %s:%s disconnected' % (sock_user.nickname, sock_addr[0], sock_addr[1]))
                 self.user_dict.pop(sock_user.nickname)
+
             else:
+                # Regular message, broadcast to everyone
                 self.broadcastMsg(from_sock, '<%s> %s\n' % (sock_user.nickname, data.strip('\n')))
         else:
             return False
         return True
+
+    def duplicateNicknameFix(self, nickname):
+        ''' Check nickname against self.user_dict keys for duplicates. If dup-
+        licate nickname(s) exist then append a number to nickname
+
+        Returns nickname
+        '''
+        dup_count = 0
+        for key in self.user_dict:
+            # Nickname will have space if duplicate name ie 'user (1)'
+            # Spaces not allowed in nicknames otherwise
+            if nickname == key.split(' ')[0]:
+                dup_count += 1
+        if dup_count:
+            nickname += ' (%d)'%dup_count
+
+        return nickname
 
     def broadcastMsg(self, from_sock, message):
         ''' Encodes message and sends to all clients other than from_sock
@@ -183,6 +212,7 @@ class Server(object):
         print('Chat server started on port %d' % self.port)
 
         while self.RUN == 1:
+            print(self.user_dict)
             # Get sockets
             r_socks, w_socks, err_socks = select.select(self.conn_list, [], [])
 
