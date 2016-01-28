@@ -35,7 +35,8 @@ class Server(object):
         self.MsgHandle = MessageHandler(maxLength=768)
 
         # Welcome message sent to users on connect
-        self.header = ' -'*7 + '\n -           - \n' + ' -'*7 + '\n'
+        with open('settings/logo.txt', 'r') as logo:
+            self.header = ''.join(logo.readlines())
         self.welcome = 'Welcome to %s hosted by:\n%s' % (self.name, self.header)
         self.welcome = self.welcome.encode('utf-8')
 
