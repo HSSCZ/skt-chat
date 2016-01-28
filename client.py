@@ -24,9 +24,7 @@ class Client(object):
         self.host = host
         self.port = port
 
-        self.settings = {}
         self.Config = Settings('client')
-        self.Config.readConfig(self.settings)
 
     def acceptData(self):
         ''' Accepts data from self.client_sock and prints to stdout
@@ -53,12 +51,12 @@ class Client(object):
 
     def identify(self):
         ''' Sends client nickname to server on initial connection'''
-        if not 'nickname' in self.settings.keys(): 
+        if not self.Config.getSetting('nickname'):
             # No nick was specified in the config
-            self.settings['nickname'] = 'Generick'
+            self.Config.editSetting('nickname', 'Generick') 
 
         # Unique string to identify initial connection from skt-chat client
-        identify = 'TU\'3<_f`]kq< %s' % self.settings['nickname']
+        identify = 'TU\'3<_f`]kq< %s' % self.Config.getSetting('nickname')
         identify = identify.encode('utf-8')
         self.client_sock.sendall(identify)
 
@@ -97,7 +95,7 @@ class Client(object):
                     if data.startswith('/nickname') or data.startswith('/nick'):
                         # Change nickname in config file
                         new_nickname = data.split(' ')[1].strip()
-                        self.Config.editConfig(self.settings, 'nickname', new_nickname)
+                        self.Config.editSetting('nickname', new_nickname)
                         # Send new nickname to server
                         data = self.MsgHandle.sanitize(data)
                         self.client_sock.sendall(data)

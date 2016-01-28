@@ -5,6 +5,7 @@ import socket
 import sys
 
 from MessageHandler import MessageHandler
+from Settings import Settings
 from User import User
 
 class Server(object):
@@ -24,7 +25,7 @@ class Server(object):
         self.port = port
         self.buff = buff
 
-        self.settings = {}
+        self.Config = Settings('server')
 
         #  { 'nickname':User object }
         # key should always match User.nickname
