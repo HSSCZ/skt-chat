@@ -12,19 +12,17 @@ class Settings(object):
             raise ValueError('Settings setting_type must be \'server\' or \'client\'')
 
         self.setting_type = setting_type
-
         self.settings = {}
-
         self.readConfig()
 
     def readConfig(self):
         ''' Read config file in to self.settings '''
-        settings_filename = 'settings.%s' % self.setting_type
+        settings_path = 'settings/settings.%s' % self.setting_type
 
-        if not os.path.isfile(settings_filename):
+        if not os.path.isfile(settings_path):
             return
 
-        with open('settings.client', 'r') as settings_file:
+        with open(settings_path, 'r') as settings_file:
             lines = settings_file.readlines()
 
         for i, curline in enumerate(lines):
@@ -42,16 +40,16 @@ class Settings(object):
         setting: name of setting, string
         value: value of setting, string
         '''
-        settings_filename = 'settings.%s' % self.setting_type
+        settings_path = 'settings/settings.%s' % self.setting_type
         # Is set to True if setting is found in file
         setting_match = False
 
-        if not os.path.isfile(settings_filename):
-            temp = open(settings_filename, 'w+')
+        if not os.path.isfile(settings_path):
+            temp = open(settings_path, 'w+')
             temp.close()
             lines = []
         else:
-            with open(settings_filename, 'r') as settings_file:
+            with open(settings_path, 'r') as settings_file:
                 lines = settings_file.readlines()
 
             # Update setting line
@@ -68,7 +66,7 @@ class Settings(object):
 
         self.settings[setting] = value
 
-        with open(settings_filename, 'w') as settings_file:
+        with open(settings_path, 'w') as settings_file:
             settings_file.writelines(lines)
 
     def getSetting(self, setting):

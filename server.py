@@ -4,20 +4,19 @@ import select
 import socket
 import sys
 
-from MessageHandler import MessageHandler
-from Settings import Settings
-from User import User
+from skt_chat.messagehandler import MessageHandler
+from skt_chat.settings import Settings
+from skt_chat.user import User
 
 class Server(object):
     def __init__(self, name, port, buff):
-        ''' Server init
-
+        '''
         Args:
         name: title of server, sent to user on connect
         port: port to run server on
         buff: buffer size
         '''
-        self.RUN = 1
+        self.running = 1
         self.srv_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.srv_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
@@ -106,7 +105,7 @@ class Server(object):
         if data:
             # Check for server commands
             if data.startswith('/srvquit'):
-                self.RUN = 0
+                self.running = 0
             elif data.startswith('/nickname') or data.startswith('/nick'):
                 # Change users nickname
                 new_nick = data.split(' ')[1].strip()
@@ -217,7 +216,7 @@ class Server(object):
 
         print('Chat server started on port %d' % self.port)
 
-        while self.RUN == 1:
+        while self.running:
             # Get sockets
             r_socks, w_socks, err_socks = select.select(self.conn_list, [], [])
 

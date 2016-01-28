@@ -4,18 +4,17 @@ import select
 import socket
 import sys
 
-from MessageHandler import MessageHandler
-from Settings import Settings
+from skt_chat.messagehandler import MessageHandler
+from skt_chat.settings import Settings
 
 class Client(object):
     def __init__(self, host, port):
-        ''' Client init
-
+        '''
         Args:
         host: server host address
         port: server host port
         '''
-        self.RUN = 1
+        self.running = 1
         self.client_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.client_sock.settimeout(10)
 
@@ -74,7 +73,7 @@ class Client(object):
         self.connect()
         self.identify()
 
-        while self.RUN:
+        while self.running:
             sock_list = [sys.stdin, self.client_sock]
             r_socks, w_socks, err_socks = select.select(sock_list, [], [])
 
