@@ -37,7 +37,7 @@ class Server(object):
         # Welcome message sent to users on connect
         with open('settings/logo.txt', 'r') as logo:
             self.header = ''.join(logo.readlines())
-        self.welcome = 'Welcome to %s hosted by:\n%s' % (self.name, self.header)
+        self.welcome = 'Welcome to %s\n%s' % (self.name, self.header)
         self.welcome = self.welcome.encode('utf-8')
 
     def acceptConn(self):
