@@ -32,7 +32,7 @@ class Server(object):
         # List of connected sockets
         self.conn_list = []
 
-        self.MsgHandle = MessageHandler(maxLength=768)
+        self.MsgHandle = MessageHandler(maxLength=1024)
 
         # Welcome message sent to users on connect
         with open('settings/logo.txt', 'r') as logo:
@@ -84,6 +84,18 @@ class Server(object):
         user_join = '[%s] has entered the room\n' % nickname
         self.broadcastMsg(self.srv_sock, user_join)
 
+    def dropConn(self, sock):
+        ''' Drop a connection to the server '''
+        addr = sock.getpeername()
+        for k,v in self.user_dict.items():
+            if v.sock == sock:
+                self.broadcastMsg(self.srv_sock, '[%s] has disconnected\n' % v.nickname)
+                print('\'%s\' %s:%s disconnected' % (v.nickname, addr[0], addr[1]))
+                self.user_dict.pop(k)
+                break
+        self.conn_list.remove(sock)
+        sock.close()
+
 
     def acceptData(self, from_sock):
         ''' Accepts messages from clients, handles server commands
@@ -106,22 +118,26 @@ class Server(object):
         if data:
             # Check for server commands
             if data.startswith('/srvquit'):
+                print('Server killed by <%s>@%s:%s' % (sock_user_nick, sock_addr[0], sock_addr[1]))
                 self.running = 0
+
             elif data.startswith('/nickname') or data.startswith('/nick'):
                 # Change users nickname
                 new_nick = data.split(' ')[1].strip()
-                # Don't do anything if user is trying to change to the nick
-                # they already have
+                # Don't do anything if user is trying to change to the nick they already have
                 if new_nick != sock_user_nick:
                     new_nick = self.duplicateNicknameFix(new_nick)
                     sock_user.nickname = new_nick
                     # Update self.user_dict with new nickname
                     self.user_dict[new_nick] = self.user_dict.pop(sock_user_nick)
                     self.broadcastMsg(self.srv_sock, '[%s changed nickname to %s]\n'%(sock_user_nick, new_nick))
+                    print('\'%s\' changed nickname to \'%s\'' % (sock_user_nick, new_nick))
 
             elif data.startswith('/users'):
                 # Send a list of users to sock_user
-                user_list = '\n'.join([x for x in self.user_dict])
+                users = [x for x in self.user_dict]
+                users.sort()
+                user_list = '\n'.join(users) + '\n'
                 self.directMsg(sock_user, user_list)
 
             elif data.startswith('/dc'):
@@ -228,20 +244,12 @@ class Server(object):
                 else:
                     if not self.acceptData(sock):
                         # User disconnected
-                        addr = sock.getpeername()
-                        for k,v in self.user_dict.items():
-                            if v.sock == sock:
-                                self.broadcastMsg(self.srv_sock, '[%s] has disconnected\n' % v.nickname)
-                                print('\'%s\' %s:%s disconnected' % (v.nickname, addr[0], addr[1]))
-                                self.user_dict.pop(k)
-                                break
-                        self.conn_list.remove(sock)
-                        sock.close()
+                        self.dropConn(sock)
 
         self.shutdown()
 
 def main():
-    s1 = Server('skt-chat', 7676, 1024)
+    s1 = Server('skt-chat', 7676, 2048)
     s1.run()
 
 if __name__  == '__main__':

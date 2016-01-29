@@ -18,26 +18,28 @@ class Client(object):
         self.client_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.client_sock.settimeout(10)
 
-        self.MsgHandle = MessageHandler(maxLength=768)
+        self.MsgHandle = MessageHandler(maxLength=1024)
 
         self.host = host
         self.port = port
 
         self.Config = Settings('client')
 
+        self.input_buffer = ''
+
     def acceptData(self):
         ''' Accepts data from self.client_sock and prints to stdout
 
         Called during main loop when self.client_sock is readable
         '''
-        data = self.client_sock.recv(1024)
+        data = self.client_sock.recv(2048)
 
         if not data:
             print('\nDisconnected from server.')
             exit(1)
 
         data = data.decode('utf-8')
-        print('\r%s' % data, end=' ')
+        print('\r%s' % data, end='')
 
     def connect(self):
         ''' Attempt to connect to the server at self.host:self.port'''
@@ -73,8 +75,9 @@ class Client(object):
         self.connect()
         self.identify()
 
+        sock_list = [sys.stdin, self.client_sock]
+
         while self.running:
-            sock_list = [sys.stdin, self.client_sock]
             r_socks, w_socks, err_socks = select.select(sock_list, [], [])
 
             for rs in r_socks:
@@ -102,6 +105,7 @@ class Client(object):
                         # Regular message to be broadcast
                         data = self.MsgHandle.sanitize(data)
                         self.client_sock.sendall(data)
+
             self.prompt()
 
 def main(host, port):
