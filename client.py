@@ -4,8 +4,8 @@ import select
 import socket
 import sys
 
-from skt_chat.messagehandler import MessageHandler
-from skt_chat.settings import Settings
+from skt_chat import MessageHandler
+from skt_chat import Settings
 
 class Client(object):
     def __init__(self, host, port):

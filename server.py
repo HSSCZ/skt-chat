@@ -4,9 +4,9 @@ import select
 import socket
 import sys
 
-from skt_chat.messagehandler import MessageHandler
-from skt_chat.settings import Settings
-from skt_chat.user import User
+from skt_chat import MessageHandler
+from skt_chat import Settings
+from skt_chat import User
 
 class Server(object):
     def __init__(self, name, port, buff):
