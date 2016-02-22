@@ -113,5 +113,19 @@ def main(host, port):
     c1.run()
 
 if __name__  == '__main__':
-    main('localhost', 7676)
+    import argparse
+    parser = argparse.ArgumentParser(usage='%s [host:port]' % sys.argv[0])
+    parser.add_argument('address', metavar='host:port')
+    args = parser.parse_args()
+    address = args.address.split(':')
+
+    try:
+        port = int(address[1])
+    except (IndexError, ValueError):
+        print('Invalid argument: %s\n' % args.address, file=sys.stderr)
+        parser.print_usage()
+        parser.exit()
+    host = address[0]
+
+    main(host, port)
 
