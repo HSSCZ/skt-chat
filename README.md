@@ -2,12 +2,9 @@
 
 Simple client-server chat program.
 
-Simply run `python3 server.py` and connect with `python3 client.py`
+Usage: `python3 server.py`, `python3 client.py [host:port]`
 
-By default the server runs on port 7676.  The client attempts to connect to
-localhost on port 7676.
-
-For now server port and client target and port must be changed in the source.
+By default the server runs on port 7676.
 
 ##### User commands:
 There are several commands the client can use.
